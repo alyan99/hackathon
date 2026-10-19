@@ -19,11 +19,15 @@ from __future__ import annotations
 
 import csv
 import logging
+import sys
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# Ensure project root is on sys.path so src.* imports work
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 PREFECT_CSV = ROOT / "pipeline" / "prefect_runs.csv"
 DRIFT_FLAG  = ROOT / "data" / "gold" / ".drift_detected"
 

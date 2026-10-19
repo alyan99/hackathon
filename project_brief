@@ -1,0 +1,111 @@
+# SaayaShift: AI-Ready Project Brief
+
+Use this document as the project brief when asking an AI model to help plan or build the hackathon project. Treat the scope, baseline, data constraints, and safety limits below as decisions. First inspect the existing repository and hackathon guide; adapt to the repository rather than replacing it wholesale.
+
+## The idea
+
+**SaayaShift — Heat-Aware Shift Planner** is an open-source, Karachi-first decision-support tool for supervisors scheduling outdoor work. It uses hourly weather forecasts to show when planned work is likely to face greater heat exposure, then ranks feasible shift windows and explains the recommendation. It combines a transparent weather-based heat proxy, local map context, and cited heat-safety guidance.
+
+The product is intended to help a supervisor make a better-informed schedule. It does not diagnose heat illness, predict individual medical outcomes, or certify a shift, route, or worksite as safe.
+
+## Primary user and problem
+
+The primary user is a supervisor coordinating outdoor field crews in Karachi. The supervisor needs to compare possible work windows using current forecast information and practical constraints such as the work duration, operating hours, and required crew coverage. A generic weather dashboard does not turn that forecast into an explainable schedule option.
+
+## Hackathon MVP
+
+Build the smallest complete, working version of these capabilities:
+
+1. **Karachi work-zone selection:** Let a supervisor select or enter a work-zone location and a planned work duration. Keep location handling at the resolution returned by the weather API; do not imply street-level temperature accuracy.
+2. **Heat-aware forecast view:** Show hourly apparent temperature and a clearly explained heat-exposure proxy for the selected location and forecast period. Show the forecast time, source, freshness, and relevant uncertainty or limitations.
+3. **Shift planner:** Generate feasible candidate windows and rank them using the forecast and user-entered scheduling constraints. Display the reason for each recommendation, the hours contributing to its score, and any safety guidance used. Keep the ranking deterministic and inspectable.
+4. **Local map context:** Use OpenStreetMap (OSM) features such as roads, mapped green spaces, or relevant facilities to provide geographic context around the selected work zone. OSM features are incomplete context, not measurements of shade, temperature, worker presence, or safety.
+5. **Cited safety Q&A (RAG):** Answer questions using an approved heat-safety reference corpus. Cite the source and the relevant passage for each answer. If the retrieved sources do not support an answer, say “I don't know” and show what information is missing.
+6. **Reproducible data status:** Show the latest successful data refresh, data-quality status, and pipeline status in the dashboard.
+
+### What makes it distinct
+
+- It turns Karachi-relevant heat forecasts into a concrete shift-planning decision, rather than stopping at a map, chatbot, or generic alert.
+- The planner explains why it ranked a window as it did, so a supervisor can review the forecast values and constraints.
+- It keeps weather and local map context separate and labels their resolution and limitations.
+- It is Karachi-first but designed for other cities through explicit city configuration, rather than claiming nationwide accuracy from Karachi data.
+
+## Data sources and declaration
+
+### Source 1 — Open-Meteo weather data
+
+- Use the Historical Forecast API for hourly historical forecast data and the Forecast API for the live outlook. These endpoints have the same publisher and count as **one source**, not two independent sources.
+- Historical period declared: **2023-01-01 through 2025-12-31**, approximately **26,304 hourly records per distinct returned weather grid cell**. This alone meets the requirement for at least two years of hourly data. Deduplicate coordinates that resolve to the same returned grid cell.
+- API data is under CC BY 4.0 with attribution. The free API is for non-commercial use; respect its terms and rate limits. Display Open-Meteo attribution with its weather data.
+- The live forecast follows the selected model's model-dependent update cycle. Record the selected model where available, request URL, and fetch time; do not imply a new model run occurs on every hourly request.
+- Docs: [Historical Forecast API](https://open-meteo.com/en/docs/historical-forecast-api), [Forecast API](https://open-meteo.com/en/docs), [licence](https://open-meteo.com/en/licence), [terms](https://open-meteo.com/en/terms), and [model updates](https://open-meteo.com/en/docs/model-updates).
+
+### Source 2 — OpenStreetMap Karachi features
+
+- Query selected Karachi features through the [Overpass API](https://overpass-api.de/api/interpreter). OSM is maintained by the OpenStreetMap Foundation and data contributors.
+- OSM data is licensed under ODbL. Attribute “© OpenStreetMap contributors” and follow applicable share-alike terms.
+- OSM is the selected source **outside the climate-track suggestions**. It is a separate contributor-maintained geographic database; map objects and their edit histories are publicly inspectable. Its credibility is for geographic context only, and local coverage may be incomplete.
+- Collect a bounded Karachi-area snapshot during the event. Preserve the exact query, fetch time, and the response's `osm_base` timestamp. OSM data is updated through replication, but the project uses a snapshot rather than a continuously refreshed map feed.
+- Docs: [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), [OSM copyright and licence](https://www.openstreetmap.org/copyright), and [OSM contributors](https://wiki.openstreetmap.org/wiki/Contributors).
+
+### Possible RAG reference sources
+
+PMD Sindh heatwave bulletins and the NDMA heat-wave guide are candidate references only. Do not download or ingest them unless their reuse terms or permission from the publisher allow the intended use. If permission cannot be confirmed, omit them or use clearly reusable guidance. RAG documents are references, not model-training labels, and they do not count toward the minimum dataset volume.
+
+### Collection and provenance rules
+
+- Collect project data during the event and follow each source's licence, terms, API limits, and access rules.
+- Preserve raw responses unchanged. Build a `manifest.csv` with each raw file's source, exact URL or query, fetch time, SHA-256 hash, and licence; include the OSM `osm_base` timestamp for OSM data.
+- Do not use Kaggle/GitHub/blog re-uploads as substitutes for the original sources. Do not use synthetic or AI-generated data for training or evaluation; any synthetic stress test must be labelled as such. Do not collect personal information.
+- Make data preparation reproducible through the repository's documented data command (the guide specifies `make data`) and add data-quality checks for missingness, duplicates, time coverage, invalid values, and schema changes.
+
+## Model and frozen baseline
+
+The declared forecasting target is **hourly apparent temperature**. Use the following baseline exactly as written in the attached `DATASET_DECLARATION.md`:
+
+> For each target hour **H**, predict apparent temperature as the value for the same local hour on the previous day (**H minus 24 hours**). Use 2023–2024 for development and hold 2025 out as the chronological test period. Report mean absolute error (MAE) in degrees Celsius.
+
+Treat this baseline, target, metric, and time split as fixed before viewing evaluation results. Do not tune against the 2025 holdout or change the baseline after seeing scores. Compare the proposed model against this same baseline on the same test rows; report uncertainty and useful error slices, such as month, hour, and location/grid cell. Do not claim model success unless it beats the declared baseline under the chosen evaluation protocol.
+
+Avoid target leakage: every feature used to predict a target hour must have been available at the prediction time. Explain what the historical forecast data represents and do not present model-grid estimates as ground-truth street observations.
+
+## Shift-planning logic and reinforcement learning
+
+For the MVP, use a transparent rule-based or constrained-ranking planner. It may rank windows by forecast heat exposure while respecting the supervisor's stated duration and operating constraints. Show the score or ranking factors in plain language. Any breaks or protective actions must come from licensed, cited guidance; do not invent medical thresholds.
+
+**Do not add reinforcement learning to the MVP.** The project does not have a reliable stream of supervisor actions, worker outcomes, or a validated safe simulation to define an RL reward. A deterministic planner is easier to test, explain, and complete in the hackathon timeframe. Revisit learning from feedback only if consented, privacy-safe, reliable feedback data becomes available later.
+
+## RAG behavior and safety limits
+
+- Retrieve only from a documented, permission-checked guidance corpus.
+- Preserve document title, publisher, URL, publication or update date, page/section, and stable chunk or row ID. Return citations that point to the actual supporting passage.
+- Keep RAG separate from the weather prediction model: it explains published guidance; it does not create heat measurements, labels, or medical judgments.
+- If evidence is absent, stale, conflicting, or outside the corpus, state that clearly and abstain rather than guessing.
+- Do not say a worker is medically safe, diagnose illness, or replace local emergency, occupational-health, or official guidance.
+
+## Open-source and city portability
+
+Make Karachi the only fully configured and validated city for the hackathon MVP. Keep city-specific settings in a small, documented configuration (for example: city name, coordinates/time zone, any locally approved thresholds, and map query). Open-Meteo and OSM have broad geographic coverage, which can reduce the work to add another city, but each city still needs local configuration, source/coverage checks, and validation. Do not describe the MVP as country-wide or universally validated.
+
+## Hackathon deliverables and timing
+
+Use the participant guide as the authority if a detail here conflicts with it. The guide calls for:
+
+- Dataset Declaration committed to the repository by **Monday, 19 October 2026, 12:00 PM PKT**.
+- Reproducible pipeline, data-quality agent/log, model comparison against the declared baseline, and cited RAG responses with an “I don't know” behavior.
+- A Hugging Face Space dashboard showing freshness, quality status, and last successful run.
+- Prefect run evidence for **Tuesday, 20 October 2026, 4:00 PM through Wednesday, 21 October 2026, 4:00 PM PKT**, with `prefect_runs.csv` and a dashboard screenshot.
+- A one-page `Summary.pdf`, a demo video of no more than three minutes, and `AI_Use_Log.md`.
+- Final repository tag `v1.0-final`; do not push changes after tagging. Final submission closes **Thursday, 22 October 2026, 12:00 AM PKT**.
+
+## Scope boundaries
+
+Do not spend MVP time on nationwide validation, worker surveillance or personal profiles, individual illness prediction, autonomous shift changes, a full mobile workforce-management system, RL, or unlicensed source ingestion. Prioritize one polished Karachi demonstration, a credible data and evaluation story, clear citations, and a reproducible end-to-end path.
+
+## Instructions to the AI helping with this project
+
+1. Inspect the existing repository, participant guide, and current data declaration before editing anything.
+2. Preserve the project name, frozen baseline, data-source and licensing commitments, scope boundaries, and safety language in this brief.
+3. Build the smallest complete vertical slice first. Prefer verifiable, explainable behavior over extra features.
+4. Do not fabricate dataset rows, worker cases, model scores, source permissions, or citations. Mark unknowns and identify how to verify them.
+5. Keep source attribution visible, log data provenance, and explain any deviation from this brief before implementing it.

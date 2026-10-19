@@ -229,7 +229,7 @@ def build_app():
     except ImportError:
         raise ImportError("Run: pip install gradio")
 
-    with gr.Blocks(title="SaayaShift — Heat-Aware Shift Planner", theme=gr.themes.Soft()) as demo:
+    with gr.Blocks(title="SaayaShift — Heat-Aware Shift Planner") as demo:
         gr.Markdown(
             """
 # 🌡️ SaayaShift — Heat-Aware Shift Planner

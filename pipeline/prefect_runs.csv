@@ -1,1 +1,4 @@
 run_id,step,status,timestamp_utc,note
+run_20261019T075338Z,flow_start,running,2026-10-19T07:53:38.165441+00:00,
+run_20261019T075338Z,1_fetch,failed,2026-10-19T07:53:38.166443+00:00,No module named 'src'
+run_20261019T075338Z,flow_end,failed,2026-10-19T07:53:38.167444+00:00,step=1_fetch
