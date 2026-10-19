@@ -1,0 +1,13 @@
+- **Warehouse:** 2+ independent sources (50,000+ rows), raw/cleaned/processed layers
+
+- **Data Quality Agent:** fix/fill/flag decisions, each logged with reason and row count
+
+- **Model:** beats a pre-declared baseline, time-based splits, uncertainty, errors by group
+
+- **Insight Agent (RAG):** cited sources, numbers only from gold tables, says "I don't know" when unsupported
+
+- **Pipeline + dashboard:** hourly Prefect/Airflow/Dagster run, Hugging Face Space showing freshness, quality status, last successful run
+
+- **Submission:** GitHub repo tagged `v1.0-final`, Space link, unedited `prefect_runs.csv` + screenshot, one-page `Summary.pdf`, demo video (max 3 min), `AI_Use_Log.md`, physical viva
+
+- **Be ready to explain:** business model and optimization log
