@@ -1,0 +1,45 @@
+city: karachi
+country: Pakistan
+timezone: Asia/Karachi
+
+# Weather grid coordinates for Karachi city centre
+# Resolution is at the Open-Meteo grid cell level (~1 km); do not imply street-level accuracy
+coordinates:
+  latitude: 24.8607
+  longitude: 67.0011
+
+# OSM Overpass bounding box (south, west, north, east)
+osm_bbox:
+  south: 24.74
+  west: 66.85
+  north: 25.10
+  east: 67.20
+
+# Typical outdoor-work operating window (24-h clock, local time)
+operating_hours:
+  start: 6   # 06:00
+  end: 20    # 20:00
+
+# Heat-exposure thresholds — sourced from WHO/ILO guidance (see docs/DATASET_DECLARATION.md)
+# These are reference values only; they do not certify a shift as safe.
+heat_thresholds:
+  caution_c: 32        # apparent temperature °C — increased caution advised
+  high_c: 38           # apparent temperature °C — high heat stress
+  extreme_c: 43        # apparent temperature °C — extreme heat stress
+
+# Open-Meteo model selection
+open_meteo:
+  model: best_match    # let Open-Meteo pick the best available model for the location
+  variables:
+    - apparent_temperature
+    - temperature_2m
+    - relative_humidity_2m
+    - windspeed_10m
+    - precipitation
+    - dewpoint_2m
+  historical_start: "2023-01-01"
+  historical_end: "2025-12-31"
+
+# City portability note:
+# To add another city, copy this file, update all fields above, then validate
+# data coverage and local thresholds before claiming accuracy for that city.

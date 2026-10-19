@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Data — raw and processed (large files; track via DVC or manually)
+data/raw/
+data/silver/*.parquet
+data/gold/*.parquet
+data/rag_index/
+
+# Keep these tracked
+!data/raw/.gitkeep
+!data/silver/.gitkeep
+!data/gold/.gitkeep
+
+# Models (large binary)
+models/
+!models/.gitkeep
+
+# Secrets / env
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prefect (keep prefect_runs.csv tracked — it's a submission artefact)
+.prefect/
+
+# Temporary
+*.tmp
+map_preview.html
