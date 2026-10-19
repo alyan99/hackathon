@@ -100,15 +100,16 @@ def step_gate2_gold(run_id: str) -> tuple[bool, bool]:
     Step 4: Gate 2 — Silver → Gold.
     Returns (passed, drift_detected).
     On failure: keeps last-good Gold, does not stop flow.
+    In the hourly flow we skip_freshness=False so freshness IS enforced on live data.
     """
     try:
         from src.dq_agent.gold import run_gold_pipeline
-        result = run_gold_pipeline()
+        # Live pipeline: freshness IS enforced (skip_freshness=False)
+        result = run_gold_pipeline(skip_freshness=False)
         if result is None:
             _log_run(run_id, "4_gate2_gold", "fail_kept_last_good")
             return False, False
 
-        # Check for drift flag written by gold.py
         drift = DRIFT_FLAG.exists()
         _log_run(run_id, "4_gate2_gold", "pass", f"drift={drift}")
         return True, drift

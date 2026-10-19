@@ -56,19 +56,43 @@ def _log_decision(action: str, reason: str, row_count: int, notes: str = "") -> 
 # ── Load raw data ─────────────────────────────────────────────────────────────
 
 def load_raw_weather() -> pd.DataFrame:
-    """Load the most recent historical JSON from Bronze."""
-    files = sorted(RAW_DIR.glob("historical_*.json"))
-    if not files:
+    """
+    Load and merge historical + all live forecast JSONs from Bronze.
+    Historical file provides 2023-2025 training data.
+    Live forecast files provide current + future hours for freshness.
+    Deduplication keeps the live forecast value where times overlap.
+    """
+    hist_files = sorted(RAW_DIR.glob("historical_*.json"))
+    fc_files = sorted(RAW_DIR.glob("forecast_*.json"))
+
+    if not hist_files:
         raise FileNotFoundError(f"No historical JSON found in {RAW_DIR}. Run `make data` first.")
-    latest = files[-1]
-    log.info("Loading raw weather from %s", latest.name)
 
-    with open(latest) as f:
-        data = json.load(f)
+    # Load historical
+    with open(hist_files[-1]) as f:
+        hist_data = json.load(f)
+    df_hist = pd.DataFrame(hist_data.get("hourly", {}))
+    _log_decision("load", f"loaded historical file {hist_files[-1].name}", len(df_hist))
 
-    hourly = data.get("hourly", {})
-    df = pd.DataFrame(hourly)
-    _log_decision("load", f"loaded raw file {latest.name}", len(df))
+    # Load and merge all live forecast files
+    fc_frames = []
+    for fc_file in fc_files:
+        with open(fc_file) as f:
+            fc_data = json.load(f)
+        hourly = fc_data.get("hourly", {})
+        if hourly.get("time"):
+            fc_frames.append(pd.DataFrame(hourly))
+            _log_decision("load", f"loaded forecast file {fc_file.name}", len(fc_frames[-1]))
+
+    if fc_frames:
+        df_fc = pd.concat(fc_frames, ignore_index=True)
+        # Merge: combine historical + forecast, forecast wins on duplicate times
+        df = pd.concat([df_hist, df_fc], ignore_index=True)
+        _log_decision("load", f"merged historical ({len(df_hist)}) + forecast ({len(df_fc)}) rows", len(df))
+    else:
+        df = df_hist
+        log.info("No live forecast files found — using historical only")
+
     return df
 
 
@@ -126,22 +150,25 @@ def gate1_type_cast(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def gate1_dedup(df: pd.DataFrame) -> pd.DataFrame:
-    """Deduplicate on time; keep first occurrence."""
+def gate1_dedup(df: pd.DataFrame, expected_overlap: bool = False) -> pd.DataFrame:
+    """
+    Deduplicate on time; keep last occurrence (so live forecast overwrites history on overlap).
+    expected_overlap=True: skip the quarantine rate check (used when merging historical + forecast).
+    """
     n_before = len(df)
-    df = df.drop_duplicates(subset=["time"], keep="first")
+    df = df.drop_duplicates(subset=["time"], keep="last")
     removed = n_before - len(df)
     if removed:
-        _log_decision("fix", "duplicate time rows removed", removed)
+        _log_decision("fix", "duplicate time rows removed (kept last — forecast wins over history)", removed)
     dup_rate = removed / max(n_before, 1)
-    if dup_rate > 0.001:
+    if not expected_overlap and dup_rate > 0.001:
         _log_decision(
             "quarantine",
             f"duplicate rate {dup_rate:.4%} exceeds 0.1% threshold",
             removed,
         )
         raise ValueError(f"Gate 1 FAILED — duplicate rate {dup_rate:.4%} > 0.1%")
-    _log_decision("pass", f"dedup check passed (dup_rate={dup_rate:.4%})", len(df))
+    _log_decision("pass", f"dedup check passed (dup_rate={dup_rate:.4%}, expected_overlap={expected_overlap})", len(df))
     return df
 
 
@@ -192,7 +219,8 @@ def run_silver_pipeline() -> pd.DataFrame:
     log.info("Running Gate 1 checks...")
     df = gate1_schema_check(df)
     df = gate1_type_cast(df)
-    df = gate1_dedup(df)
+    # expected_overlap=True because we intentionally merge historical + live forecast
+    df = gate1_dedup(df, expected_overlap=True)
     df = gate1_range_check(df)
 
     # Sort by time

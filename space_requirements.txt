@@ -1,0 +1,18 @@
+# Hugging Face Space requirements
+# Subset of requirements.txt — excludes packages not needed on HF Spaces
+pandas==2.2.2
+numpy==1.26.4
+pyarrow==16.1.0
+requests==2.32.3
+pyyaml==6.0.2
+tqdm==4.66.4
+python-dotenv==1.0.1
+lightgbm==4.4.0
+scikit-learn==1.5.1
+scipy==1.13.1
+sentence-transformers==3.1.1
+faiss-cpu==1.8.0
+gradio==4.42.0
+folium==0.17.0
+plotly==5.23.0
+prefect==2.20.3
